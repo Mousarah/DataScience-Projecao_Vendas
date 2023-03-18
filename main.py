@@ -9,28 +9,33 @@ from sklearn.metrics import mean_squared_error, r2_score
 import joblib
 
 
+def createboxplot(dataframe, eixox):
+    sns.boxplot(x=eixox, y='vendas', data=dataframe)
+    plt.show()
+
+
 # Importação e limpeza dos dados de vendas
-df = pd.read_csv('vendas.csv')
+df = pd.read_csv('vendas.csv', delimiter=",")
 df.dropna(inplace=True)
 
 # Análise exploratória dos dados
-print(df.describe())
-sns.pairplot(df)
-plt.show()
+describe = df.describe().to_string()
 
 # Análise de tendências nas vendas ao longo do tempo
-df['data'] = pd.to_datetime(df['data'])
+df = df.sort_values(by='data')
+df['data'] = pd.to_datetime(df['data'], format='%Y/%m/%d').dt.strftime('%d/%m/%Y')
 df.set_index('data', inplace=True)
-df['vendas'].plot()
+plt.title("Tendência de vendas ao longo do tempo")
+plt.text(df.index[0], df['vendas'][0], describe, bbox=dict(facecolor='white', alpha=0.8))
+sns.set_style("whitegrid")
+sns.lineplot(x='data', y='vendas', data=df, linewidth=2.5)
+plt.xticks(range(0, len(df), 3), df.index[::3])
 plt.show()
 
 # Segmentação dos clientes e análise do comportamento de compra
-sns.boxplot(x='regiao', y='vendas', data=df)
-plt.show()
-sns.boxplot(x='idade', y='vendas', data=df)
-plt.show()
-sns.boxplot(x='genero', y='vendas', data=df)
-plt.show()
+createboxplot(df, 'regiao')
+createboxplot(df, 'idade')
+createboxplot(df, 'genero')
 
 # Transformação das colunas categóricas em variáveis dummy
 df = pd.get_dummies(df, columns=['regiao', 'idade', 'genero'])
@@ -54,5 +59,14 @@ joblib.dump(model, 'modelo.pkl')
 
 # Previsão das vendas futuras
 y_pred = model.predict(X_test)
-print('Erro médio quadrático: %.2f' % mean_squared_error(y_test, y_pred))
-print('Coeficiente de determinação: %.2f' % r2_score(y_test, y_pred))
+df_result = pd.DataFrame({"Data": pd.array(y_test.index), "Vendas": y_pred})
+df_result = df_result.sort_values(by='Data')
+
+mse = 'Erro médio quadrático: %.2f' % mean_squared_error(y_test, y_pred)
+cod = 'Coeficiente de determinação: %.2f' % r2_score(y_test, y_pred)
+
+plt.title("Previsão de vendas")
+plt.text(df_result['Data'][0], df_result['Vendas'][0], mse + '\n' + cod, bbox=dict(facecolor='white', alpha=0.8))
+sns.set_style("whitegrid")
+sns.lineplot(x='Data', y='Vendas', data=df_result, linewidth=2.5)
+plt.show()
